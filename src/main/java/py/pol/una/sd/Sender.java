@@ -4,19 +4,22 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
 import javax.swing.*;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.nio.charset.StandardCharsets;
 
-public class Main {
-    public static void main(String[] args) {
+public class Sender {
+    public static void main(String[] args ) throws Exception{
         int serverPort = 1234;
         byte[] buffer = new byte[1024];
 
         String user = JOptionPane.showInputDialog("Ingrese su nombre de usuario: ");
+        String receptor;
         JSONObject json_message = new JSONObject();
         boolean login;
+        BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
 
         json_message.put("tipo", "login");
         json_message.put("mensaje", user);
@@ -66,34 +69,25 @@ public class Main {
                 login = (boolean) json_res.get("login");
             }
 
-            // una vez enviado el nombre de usuario, creamos la interfaz y esperamos a recibir mensajes
-            ClientGUI client = new ClientGUI();
-            JFrame frame = new JFrame("ClientGUI");
-
-            frame.setContentPane(client.getContentPane());
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.pack();
-            frame.setSize(800, 600);
-            frame.setVisible(true);
-
             while (true) {
-                // limpiamos el buffer
                 buffer = new byte[1024];
-                packet = new DatagramPacket(buffer, buffer.length);
+                json_message = new JSONObject();
+                System.out.println("Ingrese el destino: ");
+                receptor = inFromUser.readLine();
+                System.out.println("Ingrese el mensaje: ");
+                String mensaje = inFromUser.readLine();
 
-                // esperamos recibir un mensaje
-                socket.receive(packet);
-                res = new String(packet.getData(), 0, packet.getLength());
-                obj = new JSONParser().parse(res);
-                json_res = (JSONObject) obj;
+                json_message.put("tipo", "mensaje");
+                json_message.put("destino", receptor);
+                json_message.put("mensaje", mensaje);
 
-                String origen = (String) json_res.get("origen");
-                String mensaje = (String) json_res.get("mensaje");
 
-                client.addMessage(origen, mensaje);
+                buffer = json_message.toString().getBytes();
+                packet = new DatagramPacket(buffer, buffer.length, serverAddress, serverPort);
+                socket.send(packet);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 }
